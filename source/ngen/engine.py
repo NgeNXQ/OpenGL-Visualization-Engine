@@ -4,8 +4,8 @@ from OpenGL.GL import *
 from OpenGL.GLU import *
 from OpenGL.GLUT import *
 
-from .api import Settings, Scene
 from .graphics import Mesh, Texture
+from .api import Settings, Scene, Object
 
 class Application:
 
@@ -19,15 +19,14 @@ class Application:
 
         #glEnable(GL_LIGHTING)
         glEnable(GL_DEPTH_TEST)
-        #glEnable(GL_MULTISAMPLE)
-
-        #glShadeModel(GL_SMOOTH)
+        #glEnable(GL_COLOR_MATERIAL)
 
     def _init_glfw(self) -> None:
         if not glfw.init():
             return
 
         glfw.window_hint(glfw.DOUBLEBUFFER, glfw.TRUE)
+        #glfw.window_hint(glfw.SAMPLES, Settings.get_anti_aliasing_samples())
 
         self._window = glfw.create_window(Settings.get_window_width(), Settings.get_window_height(), Settings.get_window_title(), None, None)
 
@@ -35,12 +34,13 @@ class Application:
             self._destroy()
             return
 
+        glfw.swap_interval(0)
         glfw.make_context_current(self._window)
 
     def load_scene(self, scene: Scene) -> None:
-        self._scene = scene
+        self._active_scene = scene
 
-        for scene_object in self._scene.get_scene_objects():
+        for scene_object in self._active_scene.get_scene_objects():
             scene_object.start()
 
         while not glfw.window_should_close(self._window):
@@ -58,11 +58,11 @@ class Application:
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
-        self._scene.get_camera().render()
+        self._active_scene.get_camera().render()
 
-        glClearColor(*self._scene.get_background_color())
+        glClearColor(*self._active_scene.get_background_color())
 
-        for scene_object in self._scene.get_scene_objects():
+        for scene_object in self._active_scene.get_scene_objects():
             scene_object.render()
 
         delta_time = (glfw.get_time() - start_time)
@@ -70,12 +70,18 @@ class Application:
         if delta_time < Application._MIN_DELTA_TIME:
             delta_time = Application._MIN_DELTA_TIME
 
-        for scene_object in self._scene.get_scene_objects():
+        for scene_object in self._active_scene.get_scene_objects():
             scene_object.update(delta_time)
 
         glfw.swap_buffers(self._window)
 
+        print(f"FPS: {(int) (1.0 / delta_time)}")
+
     def _destroy(self) -> None:
+        for scene_object in self._active_scene.get_scene_objects():
+            if isinstance(scene_object, Object):
+                scene_object.get_mesh().free()
+
         glfw.terminate()
 
 class Loader:

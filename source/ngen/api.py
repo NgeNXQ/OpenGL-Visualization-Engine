@@ -106,6 +106,7 @@ class Transform:
 class SceneObject(ABC):
 
     def __init__(self, transform: Transform, render_delegate: Callable[["SceneObject"], None] = None, start_delegate: Callable[["SceneObject"], None] = None, update_delegate: Callable[["SceneObject", float], None] = None) -> None:
+        self._is_active = True
         self._transform = transform
         self._start_delegate = start_delegate
         self._render_delegate = render_delegate
@@ -114,17 +115,20 @@ class SceneObject(ABC):
     def get_transform(self) -> Transform:
         return self._transform
 
+    def set_active(self, value: bool) -> None:
+        self._is_active = value
+
     def render(self) -> None:
-        self._transform.apply_transformations()
-        self._render_delegate()
-        glFlush()
+        if self._is_active:
+            self._render_delegate()
+            glFlush()
 
     def start(self) -> None:
-        if self._start_delegate is not None:
+        if self._is_active and self._start_delegate is not None:
             self._start_delegate(self)
 
     def update(self, delta_time: float) -> None:
-        if self._update_delegate is not None:
+        if self._is_active and self._update_delegate is not None:
             self._update_delegate(self, delta_time)
 
 class Light(SceneObject):
@@ -177,11 +181,29 @@ class Camera(SceneObject):
         self._clipping_plane_far = clipping_plane_far
         self._clipping_plane_near = clipping_plane_near
 
+    #def _render_virtual_camera(self) -> None:
+    #    glMatrixMode(GL_PROJECTION)
+    #    glLoadIdentity()
+    #
+    #   gluPerspective(self._fov, float(Settings.get_window_width()) / float(Settings.get_window_height()), self._clipping_plane_near, self._clipping_plane_far)
+    #
+    #    position = self._transform.get_position()
+    #    forward = self._transform.get_vector_forward()
+    #    look_at_point = [p + f for p, f in zip(position, forward)]
+    #
+    #    gluLookAt(*position, *look_at_point, *self._transform.get_vector_up())
+
     def _render_virtual_camera(self) -> None:
         glMatrixMode(GL_PROJECTION)
         glLoadIdentity()
 
-        gluPerspective(self._fov, float(Settings.get_window_width()) / float(Settings.get_window_height()), self._clipping_plane_near, self._clipping_plane_far)
+        aspect_ratio = float(Settings.get_window_width()) / float(Settings.get_window_height())
+        left = -aspect_ratio * self._clipping_plane_near
+        right = aspect_ratio * self._clipping_plane_near
+        bottom = -self._clipping_plane_near
+        top = self._clipping_plane_near
+
+        glFrustum(left, right, bottom, top, self._clipping_plane_near, self._clipping_plane_far)
 
         position = self._transform.get_position()
         forward = self._transform.get_vector_forward()
@@ -197,13 +219,19 @@ class Object(SceneObject):
         self._mesh = mesh
         self._texture_albedo = texture_albedo
 
+    def get_mesh(self) -> Mesh:
+        return self._mesh
+
     def _render_object(self) -> None:
         glMatrixMode(GL_MODELVIEW)
+        glLoadIdentity()
+
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
 
         if self._texture_albedo is not None:
             glBindTexture(GL_TEXTURE_2D, self._texture_albedo.get_texture_id())
 
+        self._transform.apply_transformations()
         self._mesh.build()
 
         glBindTexture(GL_TEXTURE_2D, 0)
@@ -227,23 +255,26 @@ class Scene:
     def set_background_color(self, value: list[float]) -> None:
         self._background_color = value
 
-    def destroy(self, sceneObject: SceneObject) -> None:
-        self._scene_objects.remove(sceneObject)
+    def destroy(self, scene_object: SceneObject) -> None:
+        self._scene_objects.remove(scene_object)
 
-    def instantiate(self, sceneObject: SceneObject) -> None:
-        self._scene_objects.append(sceneObject)
+        if (isinstance(scene_object, Object)):
+            scene_object.get_mesh().free()
+
+    def instantiate(self, scene_object: SceneObject) -> None:
+        self._scene_objects.append(scene_object)
 
 class Settings(ABC):
 
     _INITIAL_WINDOW_TITLE = ""
     _INITIAL_WINDOW_WIDTH = 1280
     _INITIAL_WINDOW_HEIGHT = 720
-    _INITIAL_ANTI_ALIASING_LEVEL = 1
+    #_INITIAL_ANTI_ALIASING_SAMPLES = 1
 
     _window_title = _INITIAL_WINDOW_TITLE
     _window_width = _INITIAL_WINDOW_WIDTH
     _window_height = _INITIAL_WINDOW_HEIGHT
-    #_anti_aliasing_level = _INITIAL_ANTI_ALIASING_LEVEL
+    #_anti_aliasing_samples = _INITIAL_ANTI_ALIASING_SAMPLES
 
     @classmethod
     def get_window_title(cls) -> str:
@@ -270,9 +301,9 @@ class Settings(ABC):
         cls._window_height = value
 
     #@classmethod
-    #def get_anti_aliasing_level(cls) -> int:
-    #    return cls._anti_aliasing_level
+    #def get_anti_aliasing_samples(cls) -> int:
+    #    return cls._anti_aliasing_samples
 
     #@classmethod
-    #def set_anti_aliasing_level(cls, value: int) -> None:
-    #    cls._anti_aliasing_level = value
+    #def set_anti_aliasing_samples(cls, value: int) -> None:
+    #    cls._anti_aliasing_samples = value
