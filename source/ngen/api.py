@@ -1,5 +1,6 @@
 import math
 from abc import ABC
+from enum import Enum
 from OpenGL.GL import *
 from OpenGL.GLU import *
 from OpenGL.GLUT import *
@@ -24,6 +25,25 @@ class Transform:
 
         self._update_vectors()
 
+    def get_scale(self) -> list[float]:
+        return self._scale
+    
+    def set_scale(self, vector: list[float]) -> None:
+        self.scale(vector)
+    
+    def get_position(self) -> list[float]:
+        return self._position
+    
+    def set_position(self, vector: list[float]) -> None:
+        self.translate(vector)
+    
+    def get_rotation(self) -> list[float]:
+        return self._rotation
+    
+    def set_rotation(self, rotation: list[float]) -> None:
+        self._rotation = rotation
+        self._update_vectors()
+
     def _update_vectors(self) -> None:
         cosY = math.cos(math.radians(self._rotation[Transform.Y]))
         sinY = math.sin(math.radians(self._rotation[Transform.Y]))
@@ -44,25 +64,6 @@ class Transform:
         self._right[Transform.X] = cosY * cosR + sinY * sinP * sinR
         self._right[Transform.Y] = sinR * cosP
         self._right[Transform.Z] = -sinY * cosR + cosY * sinP * sinR
-
-    def get_scale(self) -> list[float]:
-        return self._scale
-    
-    def set_scale(self, vector: list[float]) -> None:
-        self.scale(vector)
-    
-    def get_position(self) -> list[float]:
-        return self._position
-    
-    def set_position(self, vector: list[float]) -> None:
-        self.translate(vector)
-    
-    def get_rotation(self) -> list[float]:
-        return self._rotation
-    
-    def set_rotation(self, rotation: list[float]) -> None:
-        self._rotation = rotation
-        self._update_vectors()
 
     def get_vector_forward(self) -> list[float]:
         return self._forward
@@ -113,11 +114,10 @@ class SceneObject(ABC):
     def get_transform(self) -> Transform:
         return self._transform
 
-    def set_transform(self, value: Transform) -> None:
-        self._transform = value
-
     def render(self) -> None:
+        self._transform.apply_transformations()
         self._render_delegate()
+        glFlush()
 
     def start(self) -> None:
         if self._start_delegate is not None:
@@ -127,53 +127,25 @@ class SceneObject(ABC):
         if self._update_delegate is not None:
             self._update_delegate(self, delta_time)
 
-class Camera(SceneObject):
+class Light(SceneObject):
 
-    def __init__(self, transform: Transform, fov: float, clipping_plane_near: float, clipping_plane_far: float, start_delegate: Callable[["SceneObject"], None] = None, update_delegate: Callable[["SceneObject", float], None] = None) -> None:
-        super().__init__(transform, self._render_virtual_camera, start_delegate, update_delegate)
+    class Type(Enum):
+        AMBIENT = GL_AMBIENT
+        DIFFUSE = GL_DIFFUSE
+        SPECULAR = GL_SPECULAR
 
-        self._fov = fov
-        self._clipping_plane_far = clipping_plane_far
-        self._clipping_plane_near = clipping_plane_near
+    class Source(Enum):
+        LIGHT_0 = GL_LIGHT0
+        LIGHT_1 = GL_LIGHT1
+        LIGHT_2 = GL_LIGHT2
+        LIGHT_3 = GL_LIGHT3
+        LIGHT_4 = GL_LIGHT4
+        LIGHT_5 = GL_LIGHT5
+        LIGHT_6 = GL_LIGHT6
+        LIGHT_7 = GL_LIGHT7
 
-    def _render_virtual_camera(self) -> None:
-        glMatrixMode(GL_PROJECTION)
-        glLoadIdentity()
-
-        gluPerspective(self._fov, float(Settings.get_window_width()) / float(Settings.get_window_height()), self._clipping_plane_near, self._clipping_plane_far)
-
-        position = self.transform.get_position()
-
-        up = self.transform.get_vector_up()
-        forward = self.transform.get_vector_forward()
-
-        look_at_point = [p + f for p, f in zip(position, forward)]
-
-        gluLookAt(*position, *look_at_point, *up)
-
-        glMatrixMode(GL_MODELVIEW)
-
-class Object(SceneObject):
-
-    def __init__(self, transform: Transform, mesh: Mesh, texture_albedo: Texture = None, start_delegate: Callable[["SceneObject"], None] = None, update_delegate: Callable[["SceneObject", float], None] = None) -> None:
-        super().__init__(transform, self._render_object, start_delegate, update_delegate)
-
-        self._mesh = mesh
-        self._texture_albedo = texture_albedo
-
-    def _render_object(self) -> None:
-
-        if self._texture_albedo is not None:
-            glBindTexture(GL_TEXTURE_2D, self._texture_albedo.get_texture_id())
-
-        self._mesh.build()
-
-        glBindTexture(GL_TEXTURE_2D, 0)
-
-class LightSource(SceneObject):
-
-    def __init__(self, transform: Transform, intensity: float, color: list[float], light_source: int, light_type: int, start_delegate: Callable[["SceneObject"], None] = None, update_delegate: Callable[["SceneObject", float], None] = None) -> None:
-        super().__init__(transform, self._render_light_source_point, start_delegate, update_delegate)
+    def __init__(self, transform: Transform, intensity: float, color: list[float], light_source: Source, light_type: Type, start_delegate: Callable[["SceneObject"], None] = None, update_delegate: Callable[["SceneObject", float], None] = None) -> None:
+        super().__init__(transform, self._render_light, start_delegate, update_delegate)
 
         self._color = color
         self._intensity = intensity
@@ -192,9 +164,49 @@ class LightSource(SceneObject):
     def set_color(self, value: list[float]) -> None:
         self._color = value
 
-    def _render_light_source_point(self) -> None:
-        glColor3f(*self._color)
-        glLightfv(self._light_source, self._light_type, [self._intensity] * 3)
+    def _render_light(self) -> None:
+        glColor4f(*self._color)
+        glLightfv(self._light_source.value, self._light_type.value, [self._intensity] * 3)
+
+class Camera(SceneObject):
+
+    def __init__(self, transform: Transform, fov: float, clipping_plane_near: float, clipping_plane_far: float, start_delegate: Callable[["SceneObject"], None] = None, update_delegate: Callable[["SceneObject", float], None] = None) -> None:
+        super().__init__(transform, self._render_virtual_camera, start_delegate, update_delegate)
+
+        self._fov = fov
+        self._clipping_plane_far = clipping_plane_far
+        self._clipping_plane_near = clipping_plane_near
+
+    def _render_virtual_camera(self) -> None:
+        glMatrixMode(GL_PROJECTION)
+        glLoadIdentity()
+
+        gluPerspective(self._fov, float(Settings.get_window_width()) / float(Settings.get_window_height()), self._clipping_plane_near, self._clipping_plane_far)
+
+        position = self._transform.get_position()
+        forward = self._transform.get_vector_forward()
+        look_at_point = [p + f for p, f in zip(position, forward)]
+
+        gluLookAt(*position, *look_at_point, *self._transform.get_vector_up())
+
+class Object(SceneObject):
+
+    def __init__(self, transform: Transform, mesh: Mesh, texture_albedo: Texture = None, start_delegate: Callable[["SceneObject"], None] = None, update_delegate: Callable[["SceneObject", float], None] = None) -> None:
+        super().__init__(transform, self._render_object, start_delegate, update_delegate)
+
+        self._mesh = mesh
+        self._texture_albedo = texture_albedo
+
+    def _render_object(self) -> None:
+        glMatrixMode(GL_MODELVIEW)
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
+
+        if self._texture_albedo is not None:
+            glBindTexture(GL_TEXTURE_2D, self._texture_albedo.get_texture_id())
+
+        self._mesh.build()
+
+        glBindTexture(GL_TEXTURE_2D, 0)
 
 class Scene:
 
@@ -231,7 +243,7 @@ class Settings(ABC):
     _window_title = _INITIAL_WINDOW_TITLE
     _window_width = _INITIAL_WINDOW_WIDTH
     _window_height = _INITIAL_WINDOW_HEIGHT
-    _anti_aliasing_level = _INITIAL_ANTI_ALIASING_LEVEL
+    #_anti_aliasing_level = _INITIAL_ANTI_ALIASING_LEVEL
 
     @classmethod
     def get_window_title(cls) -> str:
@@ -257,10 +269,10 @@ class Settings(ABC):
     def set_window_height(cls, value: int) -> None:
         cls._window_height = value
 
-    @classmethod
-    def get_anti_aliasing_level(cls) -> int:
-        return cls._anti_aliasing_level
+    #@classmethod
+    #def get_anti_aliasing_level(cls) -> int:
+    #    return cls._anti_aliasing_level
 
-    @classmethod
-    def set_anti_aliasing_level(cls, value: int) -> None:
-        cls._anti_aliasing_level = value
+    #@classmethod
+    #def set_anti_aliasing_level(cls, value: int) -> None:
+    #    cls._anti_aliasing_level = value

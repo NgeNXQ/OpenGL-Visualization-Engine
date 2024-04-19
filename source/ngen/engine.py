@@ -17,16 +17,17 @@ class Application:
     def __init__(self) -> None:
         self._init_glfw()
 
-        glEnable(GL_LIGHTING)
+        #glEnable(GL_LIGHTING)
         glEnable(GL_DEPTH_TEST)
-        glEnable(GL_MULTISAMPLE)
+        #glEnable(GL_MULTISAMPLE)
+
+        #glShadeModel(GL_SMOOTH)
 
     def _init_glfw(self) -> None:
         if not glfw.init():
             return
 
         glfw.window_hint(glfw.DOUBLEBUFFER, glfw.TRUE)
-        glfw.window_hint(glfw.SAMPLES, Settings.get_anti_aliasing_level())
 
         self._window = glfw.create_window(Settings.get_window_width(), Settings.get_window_height(), Settings.get_window_title(), None, None)
 
@@ -57,6 +58,8 @@ class Application:
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
+        self._scene.get_camera().render()
+
         glClearColor(*self._scene.get_background_color())
 
         for scene_object in self._scene.get_scene_objects():
@@ -76,6 +79,8 @@ class Application:
         glfw.terminate()
 
 class Loader:
+
+    # Credits: https://github.com/yarolig/OBJFileLoader/tree/master
 
     @staticmethod
     def load_mesh(relative_path: str) -> Mesh:
@@ -132,4 +137,4 @@ class Loader:
 
     @staticmethod
     def load_texture(relative_path: str) -> Texture:
-        return Texture(Image.open(relative_path).transpose(Image.FLIP_TOP_BOTTOM))
+        return Texture(Image.open(relative_path))
