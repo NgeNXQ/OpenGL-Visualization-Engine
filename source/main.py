@@ -12,10 +12,14 @@ def main() -> None:
 
     camera = Camera(Transform([-5, 1.5, 0], [0, 0, 0], [1, 1, 1]), 90.0, 0.01, 100.0)
 
+    car1 =Object(Transform([0, 0, 0], [0, 180, 0], [1, 1, 1]), Loader.load_mesh("assets/cars/Car 01/car.obj"),
+           Loader.load_texture("assets/cars/Car 01/car_blue.png"), update_delegate=callback_car1_update)
+
     xenomorph_white = Object(Transform([0, 0, 2], [0, 0, 0], [1.0, 1.0, 1.0]), Loader.load_mesh("assets/xenomorph.obj"), update_delegate = callback_xenomorph_white_update)
     xenomorph_black = Object(Transform([0, 0, 0], [0, 0, 0], [1.0, 1.0, 1.0]), Loader.load_mesh("assets/xenomorph.obj"), Loader.load_texture("assets/xenomorph.png"), update_delegate = callback_xenomorph_black_update)
 
-    scene = Scene([1.0, 0.0, 0.0, 1.0], camera, xenomorph_white, xenomorph_black)
+    scene = Scene([1.0, 0.0, 0.0, 1.0], camera, xenomorph_white, xenomorph_black,
+                  car1)
 
     instance.load_scene(scene)
 

@@ -1,14 +1,14 @@
 import glfw
+import asyncio
 from PIL import Image
 from OpenGL.GL import *
 from OpenGL.GLU import *
 from OpenGL.GLUT import *
+from source.ngen.graphics import Mesh, Texture
+from source.ngen.api import Settings, Scene, Object
 
-from .graphics import Mesh, Texture
-from .api import Settings, Scene, Object
 
 class Application:
-
     _VIEWPORT_OFFSET_X = 0
     _VIEWPORT_OFFSET_Y = 0
 
@@ -17,18 +17,19 @@ class Application:
     def __init__(self) -> None:
         self._init_glfw()
 
-        #glEnable(GL_LIGHTING)
+        # glEnable(GL_LIGHTING)
         glEnable(GL_DEPTH_TEST)
-        #glEnable(GL_COLOR_MATERIAL)
+        # glEnable(GL_COLOR_MATERIAL)
 
     def _init_glfw(self) -> None:
         if not glfw.init():
             return
 
         glfw.window_hint(glfw.DOUBLEBUFFER, glfw.TRUE)
-        #glfw.window_hint(glfw.SAMPLES, Settings.get_anti_aliasing_samples())
+        # glfw.window_hint(glfw.SAMPLES, Settings.get_anti_aliasing_samples())
 
-        self._window = glfw.create_window(Settings.get_window_width(), Settings.get_window_height(), Settings.get_window_title(), None, None)
+        self._window = glfw.create_window(Settings.get_window_width(), Settings.get_window_height(),
+                                          Settings.get_window_title(), None, None)
 
         if not self._window:
             self._destroy()
@@ -75,7 +76,7 @@ class Application:
 
         glfw.swap_buffers(self._window)
 
-        print(f"FPS: {(int) (1.0 / delta_time)}")
+        print(f"FPS: {(int)(1.0 / delta_time)}")
 
     def _destroy(self) -> None:
         for scene_object in self._active_scene.get_scene_objects():
@@ -83,6 +84,7 @@ class Application:
                 scene_object.get_mesh().free()
 
         glfw.terminate()
+
 
 class Loader:
 
@@ -126,7 +128,7 @@ class Loader:
                     for v in values[1:]:
                         w = v.split('/')
                         face.append(int(w[0]))
-        
+
                         if len(w) >= 2 and len(w[1]) > 0:
                             texcoords_face.append(int(w[1]))
                         else:
