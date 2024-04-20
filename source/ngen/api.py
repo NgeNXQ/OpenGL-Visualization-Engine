@@ -50,20 +50,20 @@ class Transform:
         cosP = math.cos(math.radians(self._rotation[Transform.X]))
         sinP = math.sin(math.radians(self._rotation[Transform.X]))
 
-        self._forward[Transform.X] = cosY * cosP
-        self._forward[Transform.Y] = sinP
-        self._forward[Transform.Z] = -sinY * cosP
-
         cosR = math.cos(math.radians(self._rotation[Transform.Z]))
         sinR = math.sin(math.radians(self._rotation[Transform.Z]))
 
-        self._up[Transform.X] = -cosY * sinR - sinY * sinP * cosR
-        self._up[Transform.Y] = cosP * cosR
-        self._up[Transform.Z] = -sinY * sinR + cosY * sinP * cosR
+        self._right[Transform.X] = cosR * cosY - sinR * sinP * sinY
+        self._right[Transform.Y] = cosP * sinR
+        self._right[Transform.Z] = -cosR * sinY - sinR * sinP * cosY
 
-        self._right[Transform.X] = cosY * cosR + sinY * sinP * sinR
-        self._right[Transform.Y] = sinR * cosP
-        self._right[Transform.Z] = -sinY * cosR + cosY * sinP * sinR
+        self._up[Transform.X] = sinR * cosY + cosR * sinP * sinY
+        self._up[Transform.Y] = cosP * cosR
+        self._up[Transform.Z] = -sinR * sinY + cosR * sinP * cosY
+
+        self._forward[Transform.X] = -cosP * sinY
+        self._forward[Transform.Y] = sinP
+        self._forward[Transform.Z] = cosP * cosY
 
     def get_vector_forward(self) -> list[float]:
         return self._forward
@@ -181,35 +181,35 @@ class Camera(SceneObject):
         self._clipping_plane_far = clipping_plane_far
         self._clipping_plane_near = clipping_plane_near
 
+    def _render_virtual_camera(self) -> None:
+        glMatrixMode(GL_PROJECTION)
+        glLoadIdentity()
+    
+        gluPerspective(self._fov, float(Settings.get_window_width()) / float(Settings.get_window_height()), self._clipping_plane_near, self._clipping_plane_far)
+    
+        position = self._transform.get_position()
+        forward = self._transform.get_vector_forward()
+        look_at_point = [p + f for p, f in zip(position, forward)]
+    
+        gluLookAt(*position, *look_at_point, *self._transform.get_vector_up())
+
     #def _render_virtual_camera(self) -> None:
     #    glMatrixMode(GL_PROJECTION)
     #    glLoadIdentity()
     #
-    #   gluPerspective(self._fov, float(Settings.get_window_width()) / float(Settings.get_window_height()), self._clipping_plane_near, self._clipping_plane_far)
+    #    aspect_ratio = float(Settings.get_window_width()) / float(Settings.get_window_height())
+    #    left = -aspect_ratio * self._clipping_plane_near
+    #    right = aspect_ratio * self._clipping_plane_near
+    #    bottom = -self._clipping_plane_near
+    #    top = self._clipping_plane_near
+    #
+    #    glFrustum(left, right, bottom, top, self._clipping_plane_near, self._clipping_plane_far)
     #
     #    position = self._transform.get_position()
     #    forward = self._transform.get_vector_forward()
     #    look_at_point = [p + f for p, f in zip(position, forward)]
     #
     #    gluLookAt(*position, *look_at_point, *self._transform.get_vector_up())
-
-    def _render_virtual_camera(self) -> None:
-        glMatrixMode(GL_PROJECTION)
-        glLoadIdentity()
-
-        aspect_ratio = float(Settings.get_window_width()) / float(Settings.get_window_height())
-        left = -aspect_ratio * self._clipping_plane_near
-        right = aspect_ratio * self._clipping_plane_near
-        bottom = -self._clipping_plane_near
-        top = self._clipping_plane_near
-
-        glFrustum(left, right, bottom, top, self._clipping_plane_near, self._clipping_plane_far)
-
-        position = self._transform.get_position()
-        forward = self._transform.get_vector_forward()
-        look_at_point = [p + f for p, f in zip(position, forward)]
-
-        gluLookAt(*position, *look_at_point, *self._transform.get_vector_up())
 
 class Object(SceneObject):
 
