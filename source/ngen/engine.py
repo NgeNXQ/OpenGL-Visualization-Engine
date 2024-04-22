@@ -1,3 +1,4 @@
+import aiofiles
 import glfw
 import asyncio
 from PIL import Image
@@ -16,7 +17,7 @@ class Application:
 
     def __init__(self) -> None:
         self._init_glfw()
-
+        self._active_scene = None
         # glEnable(GL_LIGHTING)
         glEnable(GL_DEPTH_TEST)
         # glEnable(GL_COLOR_MATERIAL)
@@ -38,7 +39,7 @@ class Application:
         glfw.swap_interval(0)
         glfw.make_context_current(self._window)
 
-    def load_scene(self, scene: Scene) -> None:
+    async def load_scene(self, scene: Scene) -> None:
         self._active_scene = scene
 
         for scene_object in self._active_scene.get_scene_objects():
@@ -91,7 +92,7 @@ class Loader:
     # Credits: https://github.com/yarolig/OBJFileLoader/tree/master
 
     @staticmethod
-    def load_mesh(relative_path: str) -> Mesh:
+    async def load_mesh(relative_path: str) -> Mesh:
         CHAR_FACE = 'f'
         CHAR_VERTEX = 'v'
         CHAR_NORMAL = 'vn'
@@ -104,7 +105,6 @@ class Loader:
 
         with open(relative_path, 'r') as file_stream:
             for line in file_stream:
-
                 if line.startswith('#'):
                     continue
 
@@ -120,7 +120,6 @@ class Loader:
                 elif values[0] == CHAR_TEXCOORDS:
                     texcoords.append(list(map(float, values[1:3])))
                 elif values[0] == CHAR_FACE:
-
                     face = []
                     norms = []
                     texcoords_face = []
@@ -140,9 +139,12 @@ class Loader:
                             norms.append(0)
 
                     faces.append((face, norms, texcoords_face))
-
-        return Mesh(faces, normals, vertices, texcoords)
+        mesh = Mesh(faces, normals, vertices, texcoords)
+        await mesh.mesh_loader()
+        return mesh
 
     @staticmethod
-    def load_texture(relative_path: str) -> Texture:
-        return Texture(Image.open(relative_path))
+    async def load_texture(relative_path: str) -> Texture:
+        texture = Texture(Image.open(relative_path))
+        await texture.load_texture()
+        return texture
