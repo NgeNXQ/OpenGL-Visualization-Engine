@@ -14,6 +14,10 @@ class Transform:
     Y = 1
     Z = 2
 
+    ROLL = 0
+    PITCH = 1
+    YAW = 2
+
     def __init__(self, position: list[float], rotation: list[float], scale: list[float]) -> None:
         self._scale = scale
         self._position = position
@@ -105,12 +109,12 @@ class Transform:
 
 class SceneObject(ABC):
 
-    def __init__(self, transform: Transform, render_delegate: Callable[["SceneObject"], None] = None, start_delegate: Callable[["SceneObject"], None] = None, update_delegate: Callable[["SceneObject", float], None] = None) -> None:
+    def __init__(self, transform: Transform, render_delegate: Callable[["SceneObject"], None] = None, start_delegate: Callable[["SceneObject"], None] = None, *update_delegates: Callable[["SceneObject", float], None]) -> None:
         self._is_active = True
         self._transform = transform
         self._start_delegate = start_delegate
         self._render_delegate = render_delegate
-        self._update_delegate = update_delegate
+        self._update_delegates = update_delegates
 
     def get_transform(self) -> Transform:
         return self._transform
@@ -128,8 +132,10 @@ class SceneObject(ABC):
             self._start_delegate(self)
 
     def update(self, delta_time: float) -> None:
-        if self._is_active and self._update_delegate is not None:
-            self._update_delegate(self, delta_time)
+        if self._is_active:
+            for update_delegate in self._update_delegates:
+                if update_delegate is not None:
+                    update_delegate(self, delta_time)
 
 class Light(SceneObject):
 
@@ -211,10 +217,10 @@ class Camera(SceneObject):
     #
     #    gluLookAt(*position, *look_at_point, *self._transform.get_vector_up())
 
-class Object(SceneObject):
+class Entity(SceneObject):
 
-    def __init__(self, transform: Transform, mesh: Mesh, texture_albedo: Texture = None, start_delegate: Callable[["SceneObject"], None] = None, update_delegate: Callable[["SceneObject", float], None] = None) -> None:
-        super().__init__(transform, self._render_object, start_delegate, update_delegate)
+    def __init__(self, transform: Transform, mesh: Mesh, texture_albedo: Texture = None, start_delegate: Callable[[SceneObject], None] = None, *update_delegates: Callable[[SceneObject, float], None]) -> None:
+        super().__init__(transform, self._render, start_delegate, update_delegates)
 
         self._mesh = mesh
         self._texture_albedo = texture_albedo
@@ -222,14 +228,16 @@ class Object(SceneObject):
     def get_mesh(self) -> Mesh:
         return self._mesh
 
-    def _render_object(self) -> None:
+    def _render(self) -> None:
         glMatrixMode(GL_MODELVIEW)
         glLoadIdentity()
 
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
 
         if self._texture_albedo is not None:
-            glBindTexture(GL_TEXTURE_2D, self._texture_albedo.get_texture_id())
+            glBindTexture(GL_TEXTURE_2D, self._texture_albedo.get_id())
+        else:
+            glBindTexture(GL_TEXTURE_2D, Texture.Default.MISSING_ALBEDO)
 
         self._transform.apply_transformations()
         self._mesh.build()
@@ -258,52 +266,8 @@ class Scene:
     def destroy(self, scene_object: SceneObject) -> None:
         self._scene_objects.remove(scene_object)
 
-        if (isinstance(scene_object, Object)):
+        if (isinstance(scene_object, Entity)):
             scene_object.get_mesh().free()
 
     def instantiate(self, scene_object: SceneObject) -> None:
         self._scene_objects.append(scene_object)
-
-class Settings(ABC):
-
-    _INITIAL_WINDOW_TITLE = ""
-    _INITIAL_WINDOW_WIDTH = 1280
-    _INITIAL_WINDOW_HEIGHT = 720
-    #_INITIAL_ANTI_ALIASING_SAMPLES = 1
-
-    _window_title = _INITIAL_WINDOW_TITLE
-    _window_width = _INITIAL_WINDOW_WIDTH
-    _window_height = _INITIAL_WINDOW_HEIGHT
-    #_anti_aliasing_samples = _INITIAL_ANTI_ALIASING_SAMPLES
-
-    @classmethod
-    def get_window_title(cls) -> str:
-        return cls._window_title
-
-    @classmethod
-    def set_window_title(cls, value: str) -> None:
-        cls._window_title = value
-
-    @classmethod
-    def get_window_width(cls) -> int:
-        return cls._window_width
-
-    @classmethod
-    def set_window_width(cls, value: int) -> None:
-        cls._window_width = value
-
-    @classmethod
-    def get_window_height(cls) -> int:
-        return cls._window_height
-
-    @classmethod
-    def set_window_height(cls, value: int) -> None:
-        cls._window_height = value
-
-    #@classmethod
-    #def get_anti_aliasing_samples(cls) -> int:
-    #    return cls._anti_aliasing_samples
-
-    #@classmethod
-    #def set_anti_aliasing_samples(cls, value: int) -> None:
-    #    cls._anti_aliasing_samples = value

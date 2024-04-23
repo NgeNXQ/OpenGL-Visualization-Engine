@@ -4,8 +4,8 @@ from OpenGL.GL import *
 from OpenGL.GLU import *
 from OpenGL.GLUT import *
 
+from .api import Scene, Entity
 from .graphics import Mesh, Texture
-from .api import Settings, Scene, Object
 
 class Application:
 
@@ -14,21 +14,24 @@ class Application:
 
     _MIN_DELTA_TIME = 0.005
 
+    _INITIAL_WINDOW_TITLE = ""
+    _INITIAL_WINDOW_WIDTH = 1280
+    _INITIAL_WINDOW_HEIGHT = 720
+    #_INITIAL_ANTI_ALIASING_SAMPLES = 1
+
+    _window_title = _INITIAL_WINDOW_TITLE
+    _window_width = _INITIAL_WINDOW_WIDTH
+    _window_height = _INITIAL_WINDOW_HEIGHT
+    #_anti_aliasing_samples = _INITIAL_ANTI_ALIASING_SAMPLES
+
     def __init__(self) -> None:
-        self._init_glfw()
-
-        #glEnable(GL_LIGHTING)
-        glEnable(GL_DEPTH_TEST)
-        #glEnable(GL_COLOR_MATERIAL)
-
-    def _init_glfw(self) -> None:
         if not glfw.init():
             return
 
         glfw.window_hint(glfw.DOUBLEBUFFER, glfw.TRUE)
         #glfw.window_hint(glfw.SAMPLES, Settings.get_anti_aliasing_samples())
 
-        self._window = glfw.create_window(Settings.get_window_width(), Settings.get_window_height(), Settings.get_window_title(), None, None)
+        self._window = glfw.create_window(self.get_window_width(), self.get_window_height(), self.get_window_title(), None, None)
 
         if not self._window:
             self._destroy()
@@ -36,6 +39,34 @@ class Application:
 
         glfw.swap_interval(0)
         glfw.make_context_current(self._window)
+
+        glEnable(GL_LIGHTING)
+        glEnable(GL_DEPTH_TEST)
+        #glEnable(GL_COLOR_MATERIAL)
+
+    def get_window_title(self) -> str:
+        return self._window_title
+
+    def set_window_title(self, value: str) -> None:
+        self._window_title = value
+
+    def get_window_width(self) -> int:
+        return self._window_width
+
+    def set_window_width(self, value: int) -> None:
+        self._window_width = value
+
+    def get_window_height(self) -> int:
+        return self._window_height
+
+    def set_window_height(self, value: int) -> None:
+        self._window_height = value
+
+    #def get_anti_aliasing_samples(self) -> int:
+    #    return self._anti_aliasing_samples
+
+    #def set_anti_aliasing_samples(self, value: int) -> None:
+    #    self._anti_aliasing_samples = value
 
     def load_scene(self, scene: Scene) -> None:
         self._active_scene = scene
@@ -51,16 +82,19 @@ class Application:
         width, height = glfw.get_framebuffer_size(self._window)
         glViewport(self._VIEWPORT_OFFSET_X, self._VIEWPORT_OFFSET_Y, width, height)
 
-        Settings.set_window_width(width)
-        Settings.set_window_height(height)
+        self.set_window_width(width)
+        self.set_window_height(height)
 
         start_time = glfw.get_time()
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
-        self._active_scene.get_camera().render()
+        for scene_object in self._active_scene.get_scene_objects():
+            scene_object.update(delta_time if delta_time != 0 else Application._MIN_DELTA_TIME)
 
         glClearColor(*self._active_scene.get_background_color())
+
+        self._active_scene.get_camera().render()
 
         for scene_object in self._active_scene.get_scene_objects():
             scene_object.render()
@@ -70,16 +104,13 @@ class Application:
         if delta_time < Application._MIN_DELTA_TIME:
             delta_time = Application._MIN_DELTA_TIME
 
-        for scene_object in self._active_scene.get_scene_objects():
-            scene_object.update(delta_time)
-
         glfw.swap_buffers(self._window)
 
-        print(f"FPS: {(int) (1.0 / delta_time)}")
+        print(f"FPS: {int(1.0 / delta_time if delta_time != 0 else Application._MIN_DELTA_TIME)}")
 
     def _destroy(self) -> None:
         for scene_object in self._active_scene.get_scene_objects():
-            if isinstance(scene_object, Object):
+            if isinstance(scene_object, Entity):
                 scene_object.get_mesh().free()
 
         glfw.terminate()
