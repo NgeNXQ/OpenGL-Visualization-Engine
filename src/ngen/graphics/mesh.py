@@ -7,8 +7,8 @@ class Mesh:
         self._normals = normals
         self._vertices = vertices
         self._texcoords = texcoords
-
         self._display_list = glGenLists(1)
+
         glNewList(self._display_list, GL_COMPILE)
 
         glFrontFace(GL_CCW)

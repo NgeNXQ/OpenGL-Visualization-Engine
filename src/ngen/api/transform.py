@@ -1,4 +1,5 @@
 import math
+import numpy as np
 from OpenGL.GL import *
 
 class Transform:
@@ -7,9 +8,9 @@ class Transform:
     Y = 1
     Z = 2
 
-    VECTOR_X = [1.0, 0.0, 0.0]
-    VECTOR_Y = [0.0, 1.0, 0.0]
-    VECTOR_Z = [0.0, 0.0, 1.0]
+    AXIS_X = [1.0, 0.0, 0.0]
+    AXIS_Y = [0.0, 1.0, 0.0]
+    AXIS_Z = [0.0, 0.0, 1.0]
 
     def __init__(self, position: list[float], rotation: list[float], scale: list[float]) -> None:
         self._scale = scale
@@ -24,13 +25,13 @@ class Transform:
         return self._scale
 
     def set_scale(self, vector: list[float]) -> None:
-        self.scale(vector)
+        self._scale = vector
 
     def get_position(self) -> list[float]:
         return self._position
 
     def set_position(self, vector: list[float]) -> None:
-        self.translate(vector)
+        self._position = vector
 
     def get_rotation(self) -> list[float]:
         return self._rotation
@@ -59,9 +60,9 @@ class Transform:
 
     def apply_transformations(self) -> None:
         glTranslatef(*self._position)
-        glRotatef(self._rotation[Transform.X], *self.VECTOR_X)
-        glRotatef(self._rotation[Transform.Y], *self.VECTOR_Y)
-        glRotatef(self._rotation[Transform.Z], *self.VECTOR_Z)
+        glRotatef(self._rotation[Transform.X], *self.AXIS_X)
+        glRotatef(self._rotation[Transform.Y], *self.AXIS_Y)
+        glRotatef(self._rotation[Transform.Z], *self.AXIS_Z)
         glScalef(*self._scale)
 
     def scale(self, factors: list[float]) -> None:
