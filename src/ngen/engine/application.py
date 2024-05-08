@@ -1,8 +1,8 @@
 import glfw
 from OpenGL.GL import *
 
-from .scene import Scene
-from .entity import Entity
+from ..api.scene import Scene
+from ..api.entity import Entity
 from .preferences import Preferences
 
 class Application:
@@ -63,11 +63,13 @@ class Application:
 
         Preferences.set_window_width(width)
         Preferences.set_window_height(height)
-        glfw.set_window_title(self._window, f"{Preferences.get_window_title()} {self.get_fps()}")
+        glfw.set_window_title(self._window, f"{Preferences.get_window_title()} | FPS: {self.get_fps()}")
 
         start_time = glfw.get_time()
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+
+        self._active_scene.get_camera().update(self._delta_time)
 
         for scene_object in self._active_scene.get_scene_objects():
             scene_object.update(self._delta_time)

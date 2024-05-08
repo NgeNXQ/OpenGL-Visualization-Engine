@@ -6,7 +6,7 @@ from .transform import Transform
 
 class SceneObject(ABC):
 
-    def __init__(self, transform: Transform, render_delegate: Callable[["SceneObject"], None] = None, start_delegate: Callable[["SceneObject"], None] = None, *update_delegates: Callable[["SceneObject", float], None]) -> None:
+    def __init__(self, transform: Transform, render_delegate: Callable[[], None] = None, start_delegate: Callable[['SceneObject'], None] = None, *update_delegates: Callable[['SceneObject', float], None]) -> None:
         self._is_active = True
         self._transform = transform
         self._start_delegate = start_delegate
@@ -16,7 +16,10 @@ class SceneObject(ABC):
     def get_transform(self) -> Transform:
         return self._transform
 
-    def set_active(self, value: bool) -> None:
+    def get_is_active(self, value: bool) -> None:
+        self._is_active = value
+
+    def set_is_active(self, value: bool) -> None:
         self._is_active = value
 
     def render(self) -> None:
