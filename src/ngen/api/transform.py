@@ -1,5 +1,4 @@
 import math
-import numpy as np
 from OpenGL.GL import *
 
 class Transform:
@@ -66,15 +65,12 @@ class Transform:
         glScalef(*self._scale)
 
     def scale(self, factors: list[float]) -> None:
-        glScalef(*factors)
         self._scale = [s * f for s, f in zip(self._scale, factors)]
 
     def translate(self, direction: list[float]) -> None:
-        glTranslatef(*direction)
         self._position = [sum(x) for x in zip(self._position, direction)]
 
     def rotate(self, angle: float, axis: list[float]) -> None:
-        glRotatef(angle, *axis)
         self._rotation = [sum(x) for x in zip(self._rotation, [angle * a for a in axis])]
         self._update_vectors()
 
